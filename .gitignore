@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Read this before you commit.
+#
+#  This pipeline scrapes real listings and drafts real emails, so it generates
+#  two kinds of data that must never reach a remote:
+#    1. YOUR personal data — name, phone, email, application documents.
+#    2. THIRD PARTIES' personal data — letting agents' names, work emails and
+#       phone numbers, scraped from listing pages. Republishing that is a
+#       Swiss FADP / GDPR problem regardless of who can see the repo.
+#
+#  Everything under data/, dossier/ and config/applicant.yaml is therefore
+#  ignored wholesale. Prefer widening an ignore rule over committing "just one"
+#  file out of those trees.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Your identity ──────────────────────────────────────────────────────────
+# Name, phone, email. The committed .example alongside it is the template.
+config/applicant.yaml
+
+# ── Scraped + generated data (contains third-party contact details) ────────
+# The whole tree is ignored; .gitkeep files re-create the structure on clone.
+data/**
+!data/**/
+!data/**/.gitkeep
+
+# ── Application documents (passport, Betreibungsauszug, payslips) ──────────
+dossier/**
+!dossier/.gitkeep
+!dossier/README.md
+
+# ── Filled-in agency application forms (your full personal details) ───────
+forms/
+
+# ── Reference photos for the vision scorer ─────────────────────────────────
+style/good/**
+style/bad/**
+!style/good/.gitkeep
+!style/bad/.gitkeep
+
+# ── Python ─────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# ── macOS ──────────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── Local editor / agent session state ─────────────────────────────────────
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.superpowers/
+.obsidian/

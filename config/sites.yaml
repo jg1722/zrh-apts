@@ -1,0 +1,85 @@
+# sites.yaml — which portals to scout. Only enabled sites are scraped.
+# Be gentle: honour request_delay_seconds, no parallel hammering.
+# If a site blocks or its layout changed, the scraper logs and continues —
+# it NEVER fabricates listings.
+
+politeness:
+  request_delay_seconds: 2.0     # min delay between requests to the same host
+  timeout_seconds: 25
+  max_retries: 2
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+
+# Geographic scope applied client-side to scout results. The transit gate is the
+# REAL filter; this just bounds how much we pull (and how many transit lookups
+# we do). Primary filter is a straight-line radius around the office, so we catch
+# commutable suburbs regardless of postal code (Schlieren 8952, Wallisellen 8304,
+# Zollikon 8702, Urdorf 8902, Regensdorf 8105, …). zip/city are only a FALLBACK
+# for the rare listing that has no lat/long.
+scope:
+  radius_km: 15                        # keep listings within this many km of the office
+  # Fallback for coord-less listings: keep if zipcode starts with any prefix
+  # below OR the city matches. Broadened to the Zürich commuter belt.
+  zip_prefixes: ["80", "81", "82", "86", "87", "88", "89"]
+  city_match: ["zürich", "zurich"]
+  # Only consider listings first published within this many days (newest-first
+  # paging stops once it passes this cutoff).
+  lookback_days: 4
+
+sites:
+  flatfox:
+    enabled: true
+    kind: json_api
+    base_url: "https://flatfox.ch"
+    # Public listing API. The endpoint ignores filter params and returns the
+    # whole catalog ordered oldest-first, so the scout pages BACKWARD from the
+    # tail (= newest) and filters by scope client-side. expand=images works.
+    api_path: "/api/v1/public-listing/"
+    params:
+      expand: images
+      limit: 50
+    max_pages: 25                       # safety cap (~25 * 50 = 1250 newest listings)
+
+  newhome:
+    enabled: true
+    kind: newhome_api
+    # newhome is an Angular SPA behind Cloudflare's JS challenge. Plain requests
+    # are blocked, but curl_cffi (applib/browser.py, real Chrome fingerprint)
+    # clears it for GETs. Data comes from its ServiceStack JSON API. We page
+    # NEWEST-FIRST (order=1 = publishDate desc) and stop at max_pages; scope is
+    # the office radius applied SERVER-SIDE (radiusCenterCoordinate + radius),
+    # mirroring scope.radius_km. Detail (rent_net, amenities, contact) is fetched
+    # later by verify_listings.py.
+    base_url: "https://www.newhome.ch"
+    search_url: "https://service.newhome.ch/api/api/SearchListingRequest"
+    detail_url: "https://service.newhome.ch/api/api/ListingDetailRequest"
+    params:
+      offerType: 2        # RENT
+      propertyType: 2     # APARTMENT
+      languageIso: de
+      order: 1            # 1 = newest first (publishDate desc)
+      rowCount: 20        # API hard cap is 20 per page
+    max_pages: 15         # safety cap: 15 * 20 = 300 newest in-radius listings
+
+  # ---- Disabled. Behind commercial anti-bot (DataDome + Cloudflare); reaching
+  # them requires bypassing bot protection the operators deliberately deployed,
+  # which conflicts with Hard Rule #4 (respect each site's terms). Out of scope.
+  homegate:
+    enabled: false
+    kind: html
+    base_url: "https://www.homegate.ch"
+    search_path: "/rent/real-estate/city-zurich/matching-list"
+    note: "Disabled — Cloudflare + DataDome anti-bot. Out of scope (Hard Rule 4)."
+
+  immoscout24:
+    enabled: false
+    kind: html
+    base_url: "https://www.immoscout24.ch"
+    search_path: "/en/real-estate/rent/city-zurich"
+    note: "Disabled — Cloudflare + DataDome anti-bot (same SMG stack as Homegate). Out of scope (Hard Rule 4)."
+
+  comparis:
+    enabled: false
+    kind: html
+    base_url: "https://www.comparis.ch"
+    search_path: "/immobilien/marktplatz/zuerich/mieten"
+    note: "Disabled — DataDome + Cloudflare anti-bot; aggregator re-posts the others. Out of scope (Hard Rule 4)."

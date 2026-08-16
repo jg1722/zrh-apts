@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  TEMPLATE — do not copy this file to ~/Library/LaunchAgents by hand.
+  launchd requires absolute paths, which differ per machine, so run
+
+      bin/install_schedule.sh
+
+  which substitutes __PROJECT_ROOT__ for wherever you cloned this repo and
+  loads the resulting agent.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.zrhapts.morning</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__PROJECT_ROOT__/bin/run_morning.sh</string>
+    </array>
+
+    <!-- Run every day at 07:00. The Mac must be awake at this time. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/data/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/data/logs/launchd.err.log</string>
+</dict>
+</plist>

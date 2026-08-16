@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZRH Apartments</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>ZRH Apartments</h1>
+    <button id="check-now">⟳ Check now</button>
+    <nav id="tabs">
+      <button data-tab="triage" class="active">To triage</button>
+      <button data-tab="contacted">Contacted</button>
+      <button data-tab="replied">Replied <span id="reply-badge" hidden></span></button>
+      <button data-tab="declined">Declined</button>
+      <button data-tab="all">All</button>
+      <button data-tab="learning">Taste ✦</button>
+      <button data-tab="draftstyle">Draft style ✎</button>
+    </nav>
+  </header>
+  <section id="filters">
+    <input id="q" placeholder="search…">
+    <select id="bucket"><option value="">all buckets</option><option>A</option><option>B</option></select>
+    <input id="rent_max" type="number" placeholder="max rent">
+    <input id="score_min" type="number" placeholder="min score">
+    <label><input id="include_rejected" type="checkbox"> show rejected/closed</label>
+  </section>
+  <main id="content"><p class="muted">Loading…</p></main>
+  <div id="toast" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+# ════════════════════════════════════════════════════════════════════════════
+#  criteria.yaml — SINGLE SOURCE OF TRUTH for what you want.
+#  Read on every run. Never hard-code criteria in CLAUDE.md or the scripts.
+#
+#  ►► BEFORE YOUR FIRST RUN, set every line marked  «SET THIS»  ◄◄
+#
+#  The values shipped here are GENERIC STARTING POINTS, not a recommendation.
+#  They are deliberately wide so the pipeline runs out of the box and shows you
+#  what Zürich actually has — then you tighten them. Everything else in this
+#  file is tuned for the Zürich market and can be left alone until it annoys you.
+#
+#  Personal data (your name, phone, email) is NOT in this file. It lives in
+#  config/applicant.yaml, which is gitignored — see config/applicant.example.yaml.
+# ════════════════════════════════════════════════════════════════════════════
+
+rent:
+  # Which rent figure to evaluate against. "net" = Nettomiete (excl. utilities).
+  # Flip to "gross" to evaluate Bruttomiete (incl. Nebenkosten) instead.
+  # Careful: Swiss listings quote both, and a "cheap" net rent can carry CHF 250+
+  # of Nebenkosten. If you budget in total-cost terms, use gross.
+  basis: net          # net | gross
+  min: 1000           # CHF  «SET THIS» — a floor mostly filters out mis-parsed
+                      #      listings and single rooms; it is not a wish.
+  max: 3000           # CHF  «SET THIS» — the single most important number here.
+  currency: CHF
+  # Many listings publish only one of net/gross. If the basis figure is missing
+  # but the other is present, evaluate on the other and FLAG it (not a guess —
+  # a real figure on the other basis). Set false for strict basis-only.
+  fallback_to_other_basis: true
+
+size:
+  min_sqm: 30         # m²  «SET THIS» — minimum living surface (Wohnfläche).
+
+rooms:
+  min: 1.5            # «SET THIS» — minimum Zimmer; half-rooms count (2.5 >= 2).
+                      # Swiss counting includes the living room, so a "2.5-Zimmer"
+                      # is a 1-bedroom flat. Set 2.5 if you want a separate bedroom.
+
+exchange:
+  # Tauschwohnung knockout: some listings are apartment SWAPS — the landlord only
+  # rents if you hand over a flat in return. A newcomer can't, so these are a HARD
+  # reject. Matched as case-insensitive, accent-stripped substrings in title + blurb.
+  # Keep phrases SPECIFIC (never bare "tausch") so renovation words like
+  # "Fenstertausch" / "Küchentausch" don't false-trigger. Logic: scripts/gate.py
+  # via applib.text.is_exchange_listing.
+  reject_synonyms:
+    - tauschwohnung
+    - wohnungstausch
+    - wohnung tauschen
+    - wohnung zu tauschen
+    - tauschpartner
+    - tauschobjekt
+    - ringtausch
+    - im tausch
+    - zum tausch
+    - tausch gegen
+    - gegen tausch
+    - suche tausch
+    - biete tausch
+    - apartment swap
+    - flat swap
+
+room_only:
+  # Hard reject listings that rent a single ROOM in a shared flat / WG rather than
+  # the whole apartment. The real matching logic lives in
+  # applib.text.is_room_only_listing, which requires room/flatmate-seeking INTENT
+  # (so whole flats merely "suitable for a WG" are NOT rejected). These synonyms
+  # are just extra unambiguous substrings; bare "WG"/"Wohngemeinschaft" is
+  # deliberately NOT here (too often means "this flat would suit a WG").
+  # ►► If you ARE looking for a room in a shared flat, empty this list. ◄◄
+  reject_synonyms:
+    - wg-zimmer
+    - möbliertes zimmer
+    - flatshare
+    - flatmate
+    - shared room
+    - room in a shared
+
+age_restricted:
+  # Hard reject age-gated / senior / assisted-living housing (e.g. "ab 55 Jahren",
+  # "55+", Alterswohnung). NOT triggered by bare "altersgerecht" (accessibility)
+  # or "ab 60 m²". Numeric age patterns handled in applib.text.is_age_restricted_listing.
+  reject_synonyms:
+    - alterswohnung
+    - seniorenwohnung
+    - betreutes wohnen
+    - assisted living
+    - senior living
+    - altersresidenz
+    - alterssiedlung
+    - wohnen im alter
+    - mindestalter
+
+move_in:
+  # Move-in window knockout. The listing's OWN availability date must fall inside
+  # [earliest, latest] — note this is STRICT on both sides: a flat that frees up
+  # EARLIER than `earliest` is rejected too, on the reasoning that you'd be paying
+  # double rent. If you'd rather accept anything up to `latest` and eat the
+  # overlap, set earliest to null.
+  #
+  # «SET THIS» — both bounds. Either may be null to disable that side; both null
+  # disables the window entirely (nothing is rejected on move-in date).
+  # gate.py re-gates every active listing each run, so widening the window brings
+  # previously-rejected listings straight back with no API calls.
+  earliest: null              # e.g. "2026-10-01"
+  latest: "2027-06-30"        # deliberately far out so the shipped default is
+                              # permissive; tighten it to your actual deadline.
+  # Availability not published at all, or published as free text the scout can't
+  # turn into a date ("nach Vereinbarung", "ab sofort" — see
+  # scout.py:_flatfox_availability) → manual-check, never guessed and never
+  # silently killed. Roughly half of Zürich listings publish no date at all, so
+  # expect a real manual-check pile. Set false to ignore the window whenever the
+  # date is missing instead.
+  unknown_to_manual: true
+
+lease:
+  # Reject temporary / short-term rentals: if a listing SPECIFIES a rental term
+  # shorter than this (a date range like "ab … bis …", or "mind. N Monate" /
+  # "for N months"), it's a hard reject. Temporary wording with no stated term
+  # (e.g. "befristet" alone) goes to manual-check, never silently kept.
+  min_months: 6
+  # A FIXED term of ANY length ("befristet auf 12 Monate", "1.8.2026 bis
+  # 30.4.2027") means the lease ends — reject even when the term clears
+  # min_months. A minimum commitment ("Mindestmietdauer 12 Monate") on an
+  # open-ended lease is fine and never rejected by this rule.
+  reject_fixed_term: true
+  # Wording that ALWAYS means a temporary rental — hard reject on sight, no
+  # manual-check detour. Remove "untermiete"/"sublet" if an open-ended sublet
+  # is acceptable to you (they are common in Zürich and worth considering).
+  hard_reject_keywords:
+    - zwischenmiete
+    - zwischennutzung
+    - untermiete
+    - sublet
+
+# MUST-HAVES: failing ANY of these rejects the listing outright.
+#   within_rent, within_size, within_rooms  -> derived from the blocks above
+#   within_move_in_window                   -> the move_in block above
+#   transit_ok                              -> the transit knockout gate
+# (Listed here for documentation; the gate logic lives in scripts/gate.py.)
+must_haves:
+  - within_rent
+  - within_size
+  - within_rooms
+  - within_move_in_window
+  - transit_ok
+
+# NICE-TO-HAVES: missing one does NOT reject. It demotes the listing to Bucket B
+# and the digest states the specific gap. Detected from listing amenities/text
+# using the German synonym lists below (case-insensitive substring match).
+# Add your own blocks here (e.g. dishwasher: [geschirrspüler, spülmaschine]).
+nice_to_haves:
+  parking:
+    synonyms: [garage, tiefgarage, einstellhalle, einstellplatz, stellplatz, parkplatz, autoabstellplatz, parking]
+  balcony:
+    synonyms: [balkon, terrasse, sitzplatz, loggia, dachterrasse, balcony, terrace]
+
+condition:
+  # If true, a "dated" kitchen/bath REJECTS instead of demoting to Bucket B.
+  # Default false: dated only demotes + flags the reason (photos can mislead;
+  # you make the final call).
+  reject_on_dated: false
+
+transit:
+  # The transit knockout gate. Door-to-door public transport to the office,
+  # arriving by arrive_by, must be <= max_minutes. Computed by
+  # scripts/transit_check.py against transport.opendata.ch (free, no API key).
+  #
+  # The office below is a central Zürich (Wiedikon) default. «SET THIS» to your
+  # own workplace — and update office_lat/office_lon to match, or the scout's
+  # straight-line pre-filter will silently exclude the right neighbourhoods.
+  # Easiest way to get coordinates: right-click the address in Google Maps.
+  office: "Manessestrasse 2, 8003 Zürich"
+  office_lat: 47.3693280     # used to pre-filter listings by straight-line radius
+  office_lon: 8.5276425      # (scout scope); the transit gate is the true filter
+  arrive_by: "08:00"        # must arrive at or before this time
+  max_minutes: 40           # «SET THIS» — door-to-door knockout threshold.
+                            # 40 is generous for Zürich and keeps most of the
+                            # canton in play; 25–30 confines you to the city.
+                            # Note the API over-estimates walking legs, so a fast
+                            # walker effectively beats this number by a few min.
+  weekday_only: true        # evaluate for the next Mon–Fri
+  # Number of fastest connections to inspect when picking the best arrival.
+  connections_to_check: 6
+
+hood:
+  # Hoodmaps neighborhood categories: rich | hipsters | normies | tourists |
+  # suits | crime (and any others their data may expose). Any category listed
+  # here is a HARD reject (same status as rent out of range). Listings outside
+  # the ZH map (no category) are never rejected on this rule — they pass through.
+  # This is crowd-sourced vibe data, not crime statistics — treat it as a nudge.
+  exclude_categories: [crime]
+
+outreach:
+  # Master safety switch. When false (default), emails are DRAFTED ONLY and you
+  # must approve every send. Flip to true to enable auto-send — but read
+  # workflows/5-outreach.md first; nothing in this repo has been tested that way.
+  auto_send: false
+  language: de              # de | en — first-contact language default
+  form: Sie                # German address form: Sie (formal) | du
+  # When the SAME apartment is found on more than one site, we keep the copy with
+  # the best reachable outreach channel (highest tier wins). Detected per listing
+  # by verify_listings.py; channel_unknown is the worst (always loses a tie).
+  #   email           — a direct landlord/agency email is exposed
+  #   onsite_now      — on-site contact / application form available immediately
+  #   onsite_windowed — on-site, but gated behind a wait/queue window (a future
+  #                     "applications open on…" date, e.g. Flatfox new-builds)
+  #   channel_unknown — nothing parseable; surfaced for a human, never guessed
+  tier_order: [email, onsite_now, onsite_windowed, channel_unknown]
+
+  # NOTE: WHO is applying (name, age, role, contact details) is NOT here.
+  # It lives in config/applicant.yaml — gitignored. See applicant.example.yaml.
+
+  timing:
+    # Phrasing used in first-contact drafts. If a listing is available only AFTER
+    # move_in_latest, the draft aligns to the listing's own availability date
+    # instead of the window below.
+    #
+    # Drafts ASK for a viewing: "Wäre eine Besichtigung {viewing_window} möglich?"
+    # — so the value must be an ADVERBIAL that fits that slot, not a sentence.
+    # Keep it date-free: concrete dates go stale within days and every draft then
+    # asks for a viewing in the past.
+    viewing_window_de: "kurzfristig"
+    viewing_window_en: "at short notice"
+    # Appended as its own sentence right after the viewing ask — use it for a
+    # flexibility or availability signal, e.g. "Ich bin ab dem 1. Oktober in
+    # Zürich und zeitlich flexibel." Empty string drops the sentence entirely.
+    viewing_note_de: ""
+    viewing_note_en: ""
+    # «SET THIS» — the move-in window IN PROSE. Must describe the same window as
+    # the move_in block above; they drifted apart once and every draft then
+    # contradicted the filter (there is a test asserting move_in_latest matches).
+    move_in_window_de: "nach Absprache"
+    move_in_window_en: "at a mutually convenient date"
+    move_in_latest: "2027-06-30"
+
+# Cross-site duplicate detection. A listing is "the same flat" when its address
+# (street+number), postcode, rounded rooms and m²-bucket match — rent is NOT in
+# the key (sites differ on net vs gross). See scripts/applib/store.py.
+dedup:
+  m2_bucket: 5            # living area rounded to the nearest N m² for the match key
+  rooms_round: 0.5        # rooms rounded to the nearest N for the match key
+  # Mass-duplicate clusters: spam / bulk re-posts of one apartment template,
+  # permuting rooms/price. Listings sharing a near-identical description are
+  # grouped; any group of >= cluster_min_size is flagged and demoted (kept
+  # visible, just pushed to the bottom of the list). 0 disables the filter.
+  cluster_min_size: 4
+
+# Staleness: Zürich listings die within days, so a listing the pipeline hasn't
+# re-confirmed recently is flagged in the digest, and one that stays
+# unverifiable (page unreachable / unparsable) long enough is auto-closed.
+staleness:
+  stale_after_days: 2      # digest adds "last checked N d ago — may be gone" beyond this
+  expire_after_days: 14    # undecided + unverifiable this long → closed (0 disables)
+
+# Listing score (0–100) — orders listings within each digest section; never
+# changes bucket membership. Weighted sum of four 0–1 components, weights below
+# (must sum to 100). Unknown data scores unknown_value — deliberately below the
+# 0.5 midpoint so verified-good flats outrank unverified ones.
+# Design doc: docs/2026-06-11-scoring-design.md
+scoring:
+  # Commute is deliberately LOW-weighted: it is already a hard gate, so every
+  # listing shown is "fine" on transit — it shouldn't dominate the ranking. The
+  # weight goes to what actually differentiates flats: condition, hood, value.
+  # «TUNE THESE» to your own priorities; they must sum to 100.
+  weights: {commute: 10, condition: 45, hood: 20, value: 25}
+  unknown_value: 0.4
+  commute_full_minutes: 40      # ≤ this = full commute score (anything within the
+                                # gate counts as fine; no penalty for 20 vs 35 min)
+  commute_zero_minutes: 50      # ≥ this = zero (only matters for transit_unknowns)
+  hood_preferences:             # hoodmaps category → 0–1 preference «TUNE THESE»
+    hipsters: 1.0
+    rich: 0.8
+    normies: 0.6
+    suits: 0.3
+    tourists: 0.3
+  value_best_chf_m2: 25         # rent/m² at or under this = full value score
+  value_worst_chf_m2: 50        # at or over this = zero
+  condition_grades: {modern: 1.0, acceptable: 0.6, dated: 0.2}

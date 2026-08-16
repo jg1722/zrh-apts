@@ -1,0 +1,44 @@
+# applicant.example.yaml — WHO IS APPLYING.  ← COPY THIS FILE BEFORE FIRST RUN
+#
+#     cp config/applicant.example.yaml config/applicant.yaml
+#
+# `config/applicant.yaml` is GITIGNORED. Your name, phone number and email
+# address live there and never enter the repository. This example file is the
+# only one that is committed, so keep placeholder values in it.
+#
+# If applicant.yaml is missing, the pipeline falls back to THIS file and prints
+# a warning — everything still runs, but any drafted email will be signed
+# "Vorname Nachname". Fill in applicant.yaml before you contact a landlord.
+#
+# Consumed by: scripts/outreach.py (first-contact drafts),
+#              scripts/check_replies.py (reply drafts), via applib.config.
+
+identity:
+  # Printed as the email signature, in this order. Leave a field empty ("") to
+  # drop that line from the signature entirely.
+  name: "Vorname Nachname"
+  phone: "+41 79 000 00 00"
+  # Also the mailbox the reply-checker watches for landlord responses, and the
+  # address first-contact drafts are copied to. Must be the Gmail account your
+  # Claude Gmail connector is authorised for.
+  email: "you@example.com"
+
+profile:
+  # The facts the first-contact email states about you. Swiss landlords expect
+  # all of these; a flat in Zürich gets 100+ applicants and a mail that omits
+  # them gets skipped. Keep it honest — everything here ends up in the dossier.
+  age: 30
+  # Marital status. German copy uses status_de, English copy uses status_en.
+  status_de: ledig                 # ledig | verheiratet | geschieden
+  status_en: single                # single | married | divorced
+  # Job title, as you want it to appear in the mail.
+  role_de: "Senior Consultant"
+  role_en: "senior consultant"
+  # Employment start date (YYYY-MM-DD). Set to null if you are ALREADY employed
+  # — the copy then drops the "starting on <date>" clause entirely.
+  job_start: "2026-10-01"
+  # The reassurance clause after the job line. Set to "" to drop it.
+  employment_note_de: "unterschriebener Arbeitsvertrag liegt vor"
+  employment_note_en: "employment contract signed"
+  # Are you moving in alone? Drives "als Einzelperson" / "on my own".
+  single_occupant: true
